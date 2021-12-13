@@ -20,6 +20,12 @@ const dbConfig = {
 
 const app = express();
 
+interface Dogs {
+  message: string
+  status: string
+
+}
+
 app.use(express.json()); //add body parser to each following route handler
 app.use(cors()) //add CORS support to each following route handler
 
@@ -27,10 +33,29 @@ const client = new Client(dbConfig);
 client.connect();
 
 app.get("/", async (req, res) => {
-  const dbres = await client.query('select * from categories');
-  res.json(dbres.rows);
+  try {
+    const dbres = await client.query('select * from dogbreedsdb');
+    res.json(dbres.rows);
+    
+  } catch (error) {
+    console.error(error.message)
+    
+  }
 });
 
+
+// app.post<{}, {}, Dogs>("/", async (req, res) => {
+//   try {
+//     const { message } = req.body;
+//     const newDog = await client.query("INSERT INTO dogbreedsdb (message) VALUES($1)", [message]);
+//     res.json(newDog.rows[0]);
+//   }
+
+
+//   catch (error) {
+//     console.error(error.message)
+//   }
+// });
 
 //Start the server on the given port
 const port = process.env.PORT;
