@@ -108,6 +108,5 @@ if (!port) {
 }
 app.listen(port, async() => {
   const dummyAwait = await populateDatabase()
-  console.log(dummyAwait)
   console.log(`Server is up and running on port ${port}`);
 });
