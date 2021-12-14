@@ -2,6 +2,8 @@ import { Client } from "pg";
 import { config } from "dotenv";
 import express from "express";
 import cors from "cors";
+import { breeds } from './breeds'
+import axios from 'axios';
 
 config(); //Read .env file lines as though they were env vars.
 
@@ -26,8 +28,21 @@ interface Dogs {
   votes: number
 }
 
+async function images(breed: string) {
+  const images = await axios.get(`https://dog.ceo/api/breed/${breed}/images`)
+  return { breed, images };
+}
+
+const filteredBreeds = breeds.filter(breed => !breed.includes('-'));
+
+async function toImages() {
+  return await Promise.all(filteredBreeds.map(images));
+}
+
+console.log(toImages())
+
 app.use(express.json()); //add body parser to each following route handler
-app.use(cors()) //add CORS support to each following route handler
+app.use(cors()); //add CORS support to each following route handler
 
 const client = new Client(dbConfig);
 client.connect();
@@ -38,10 +53,11 @@ app.get("/", async (req, res) => {
     res.json(dbres.rows);
 
   } catch (error) {
-    console.error(error.message)
+    console.error(error.message);
 
   }
 });
+
 
 
 app.post<{}, {}, Dogs>("/", async (req, res) => {
@@ -51,7 +67,7 @@ app.post<{}, {}, Dogs>("/", async (req, res) => {
     res.json(newDog.rows[0]);
   }
   catch (error) {
-    console.error(error.message)
+    console.error(error.message);
   }
 });
 
@@ -62,7 +78,7 @@ app.put<{ id: number }, {}, Dogs>("/:id", async (req, res) => {
     res.json(newDog.rows[0]);
   }
   catch (error) {
-    console.error(error.message)
+    console.error(error.message);
   }
 });
 
