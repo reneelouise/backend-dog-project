@@ -21,9 +21,9 @@ const dbConfig = {
 const app = express();
 
 interface Dogs {
-  message: string
-  status: string
-
+  breed: string
+  subbreed: boolean
+  votes: number
 }
 
 app.use(express.json()); //add body parser to each following route handler
@@ -34,28 +34,38 @@ client.connect();
 
 app.get("/", async (req, res) => {
   try {
-    const dbres = await client.query('select * from dogbreedsdb');
+    const dbres = await client.query('select * from breeds');
     res.json(dbres.rows);
-    
+
   } catch (error) {
     console.error(error.message)
-    
+
   }
 });
 
 
-// app.post<{}, {}, Dogs>("/", async (req, res) => {
-//   try {
-//     const { message } = req.body;
-//     const newDog = await client.query("INSERT INTO dogbreedsdb (message) VALUES($1)", [message]);
-//     res.json(newDog.rows[0]);
-//   }
+app.post<{}, {}, Dogs>("/", async (req, res) => {
+  try {
+    const { breed, subbreed, votes } = req.body;
+    const newDog = await client.query("INSERT INTO breeds (breed, subbreed, votes) VALUES($1, $2, $3) RETURNING *", [breed, subbreed, votes]);
+    res.json(newDog.rows[0]);
+  }
+  catch (error) {
+    console.error(error.message)
+  }
+});
 
+app.put<{ id: number }, {}, Dogs>("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const newDog = await client.query("UPDATE breeds SET votes = votes + 1 WHERE id=$1 RETURNING * ", [id]);
+    res.json(newDog.rows[0]);
+  }
+  catch (error) {
+    console.error(error.message)
+  }
+});
 
-//   catch (error) {
-//     console.error(error.message)
-//   }
-// });
 
 //Start the server on the given port
 const port = process.env.PORT;

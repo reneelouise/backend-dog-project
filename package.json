@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node dist/server.js",
     "start:dev": "LOCAL=true ts-node server.ts",
-    "postinstall": "tsc"
+    "postinstall": "tsc",
+    "start:devh": "ts-node ./server.ts"
   },
   "author": "your name here",
   "license": "ISC",
