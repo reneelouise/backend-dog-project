@@ -2,7 +2,6 @@ import { Client } from "pg";
 import { config } from "dotenv";
 import express from "express";
 import cors from "cors";
-import { breeds } from './breeds'
 import axios from 'axios';
 
 config(); //Read .env file lines as though they were env vars.
@@ -19,7 +18,6 @@ const dbConfig = {
   connectionString: process.env.DATABASE_URL,
   ssl: sslSetting,
 };
-//there are a lot of dog breed images, like over 100 per breed, maybe limit them?
 
 const app = express();
 
@@ -48,7 +46,6 @@ app.get("/", async (req, res) => {
 });
 
 
-
 app.post<{}, {}, Dogs>("/", async (req, res) => {
   try {
     const { breed, subbreed, votes } = req.body;
@@ -70,43 +67,48 @@ app.put<{ id: number }, {}, Dogs>("/:id", async (req, res) => {
     console.error(error.message);
   }
 });
-type ListOfBreedsResponse = { data: {
-  message: {[key: string]: string[]},
-  status: string
-}}
+
+type ListOfBreedsResponse = {
+  data: {
+    message: { [key: string]: string[] },
+    status: string
+  }
+}
 
 const writeBreed = async (breedName: string) => {
   const normalizedBreedName = breedName.replace("/", "-")
   const images = await axios.get(`https://dog.ceo/api/breed/${breedName}/images`)
-  await client.query("INSERT INTO breeds (breed, image) VALUES($1, $2) RETURNING *", [normalizedBreedName, images.data[0]])
+  console.log(images.data.message)
+  await client.query("INSERT INTO breeds (breed, image) VALUES($1, $2) RETURNING *", [normalizedBreedName, images.data.message])
 
 }
 
-async function populateDatabase(){
-  const listOfAllBreeds: ListOfBreedsResponse = await axios.get(`https://dog.ceo/api/breeds/list/all`)
-  const promiseArr: Promise<unknown>[] = []
-  Object.entries(listOfAllBreeds.data.message).forEach(([breed, subbreeds]) => {
-    if (subbreeds.length){
-      subbreeds.forEach((subbreed) => {
-        promiseArr.push(writeBreed(`${breed}/${subbreed}`))
+async function populateDatabase() {
+  const count = await client.query("SELECT COUNT(*) FROM breeds");
+  if (!count.rows[0].count) {
+    const listOfAllBreeds: ListOfBreedsResponse = await axios.get(`https://dog.ceo/api/breeds/list/all`)
+    const promiseArr: Promise<unknown>[] = []
+    Object.entries(listOfAllBreeds.data.message).forEach(([breed, subbreeds]) => {
+      if (subbreeds.length) {
+        subbreeds.forEach((subbreed) => {
+          promiseArr.push(writeBreed(`${breed}/${subbreed}`))
 
-      })
-    }
-    else {
-      promiseArr.push(writeBreed(breed))
-    }
-  })
-  await Promise.all(promiseArr)
-  //get breed and subbreeds and images from API
-  //populate the breed column with breeds and subbreeds, if present
-  //populate the images column with corresponding images
+        })
+      }
+      else {
+        promiseArr.push(writeBreed(breed))
+      }
+    })
+    await Promise.all(promiseArr)
+  }
 }
+
 //Start the server on the given port
 const port = process.env.PORT;
 if (!port) {
   throw 'Missing PORT environment variable.  Set it in .env file.';
 }
-app.listen(port, async() => {
-  const dummyAwait = await populateDatabase()
+app.listen(port, async () => {
+  await populateDatabase()
   console.log(`Server is up and running on port ${port}`);
 });
