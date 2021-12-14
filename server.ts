@@ -19,6 +19,7 @@ const dbConfig = {
   connectionString: process.env.DATABASE_URL,
   ssl: sslSetting,
 };
+//there are a lot of dog breed images, like over 100 per breed, maybe limit them?
 
 const app = express();
 
@@ -28,18 +29,6 @@ interface Dogs {
   votes: number
 }
 
-async function images(breed: string) {
-  const images = await axios.get(`https://dog.ceo/api/breed/${breed}/images`)
-  return { breed, images };
-}
-
-const filteredBreeds = breeds.filter(breed => !breed.includes('-'));
-
-async function toImages() {
-  return await Promise.all(filteredBreeds.map(images));
-}
-
-console.log(toImages())
 
 app.use(express.json()); //add body parser to each following route handler
 app.use(cors()); //add CORS support to each following route handler
@@ -81,13 +70,44 @@ app.put<{ id: number }, {}, Dogs>("/:id", async (req, res) => {
     console.error(error.message);
   }
 });
+type ListOfBreedsResponse = { data: {
+  message: {[key: string]: string[]},
+  status: string
+}}
 
+const writeBreed = async (breedName: string) => {
+  const normalizedBreedName = breedName.replace("/", "-")
+  const images = await axios.get(`https://dog.ceo/api/breed/${breedName}/images`)
+  await client.query("INSERT INTO breeds (breed, image) VALUES($1, $2) RETURNING *", [normalizedBreedName, images.data[0]])
 
+}
+
+async function populateDatabase(){
+  const listOfAllBreeds: ListOfBreedsResponse = await axios.get(`https://dog.ceo/api/breeds/list/all`)
+  const promiseArr: Promise<unknown>[] = []
+  Object.entries(listOfAllBreeds.data.message).forEach(([breed, subbreeds]) => {
+    if (subbreeds.length){
+      subbreeds.forEach((subbreed) => {
+        promiseArr.push(writeBreed(`${breed}/${subbreed}`))
+
+      })
+    }
+    else {
+      promiseArr.push(writeBreed(breed))
+    }
+  })
+  await Promise.all(promiseArr)
+  //get breed and subbreeds and images from API
+  //populate the breed column with breeds and subbreeds, if present
+  //populate the images column with corresponding images
+}
 //Start the server on the given port
 const port = process.env.PORT;
 if (!port) {
   throw 'Missing PORT environment variable.  Set it in .env file.';
 }
-app.listen(port, () => {
+app.listen(port, async() => {
+  const dummyAwait = await populateDatabase()
+  console.log(dummyAwait)
   console.log(`Server is up and running on port ${port}`);
 });
