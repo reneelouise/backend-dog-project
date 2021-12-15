@@ -34,9 +34,19 @@ app.use(cors()); //add CORS support to each following route handler
 const client = new Client(dbConfig);
 client.connect();
 
-app.get("/", async (req, res) => {
+app.get("/leaderboard", async (req, res) => {
   try {
-    const dbres = await client.query('select * from breeds');
+    const dbres = await client.query('select * from breeds order by votes limit 10');
+    res.json(dbres.rows);
+  } catch (error) {
+    console.error(error.message);
+
+  }
+});
+
+app.get("/random", async (req, res) => {
+  try {
+    const dbres = await client.query('SELECT * FROM breeds ORDER BY random() LIMIT 2;');
     res.json(dbres.rows);
 
   } catch (error) {
@@ -45,17 +55,6 @@ app.get("/", async (req, res) => {
   }
 });
 
-
-app.post<{}, {}, Dogs>("/", async (req, res) => {
-  try {
-    const { breed, subbreed, votes } = req.body;
-    const newDog = await client.query("INSERT INTO breeds (breed, subbreed, votes) VALUES($1, $2, $3) RETURNING *", [breed, subbreed, votes]);
-    res.json(newDog.rows[0]);
-  }
-  catch (error) {
-    console.error(error.message);
-  }
-});
 
 app.put<{ id: number }, {}, Dogs>("/:id", async (req, res) => {
   try {
@@ -92,7 +91,6 @@ async function populateDatabase() {
       if (subbreeds.length) {
         subbreeds.forEach((subbreed) => {
           promiseArr.push(writeBreed(`${breed}/${subbreed}`))
-
         })
       }
       else {
