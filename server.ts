@@ -36,7 +36,7 @@ client.connect();
 
 app.get("/leaderboard", async (req, res) => {
   try {
-    const dbres = await client.query('select * from breeds order by votes limit 10');
+    const dbres = await client.query('select * from breeds order by votes desc limit 10');
     res.json(dbres.rows);
   } catch (error) {
     console.error(error.message);
